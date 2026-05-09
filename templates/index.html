@@ -52,6 +52,7 @@
         <button class="tab-btn" data-tab="match" id="tabMatch">🎯 Match &amp; Rank</button>
         <button class="tab-btn" data-tab="search" id="tabSearch">🔎 Semantic Search</button>
         <button class="tab-btn" data-tab="aidetect" id="tabAiDetect">🤖 AI Detect</button>
+        <button class="tab-btn" data-tab="ats" id="tabAts">📊 ATS Score</button>
     </nav>
 
     <!-- ══════════════════════════════════════
@@ -206,8 +207,66 @@ We are looking for a Python Developer with experience in Machine Learning, SQL, 
         </div>
     </section>
 
+    <!-- ══════════════════════════════════════
+         TAB 5: ATS Evaluator
+    ══════════════════════════════════════ -->
+    <section class="tab-content" id="tab-ats">
+        <div class="glass-card">
+            <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; gap:16px; align-items:center;">
+                    <div class="icon">📊</div>
+                    <div>
+                        <h2>Deterministic ATS Score</h2>
+                        <p>Rule-based scoring against job descriptions</p>
+                    </div>
+                </div>
+                <button class="btn btn-primary" id="atsDownloadBtn" style="display:none;" onclick="window.print()">📥 Export PDF</button>
+            </div>
+
+            <div class="grid-2 mt-12">
+                <div>
+                    <label><strong>1. Select Candidate</strong></label>
+                    <div class="ai-detect-controls" style="margin-top: 8px;">
+                        <select class="ai-select" id="atsCandidateSelect">
+                            <option value="">— Select a candidate to analyze —</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label><strong>2. Job Description</strong></label>
+                    <textarea class="jd-textarea mt-12" id="atsJdInput" placeholder="Paste job description here..." style="min-height:100px; margin-top:8px;"></textarea>
+                </div>
+            </div>
+            
+            <div class="btn-group mt-12">
+                <button class="btn btn-primary" id="atsEvaluateBtn" disabled>
+                    📊 Calculate ATS Score
+                </button>
+            </div>
+        </div>
+
+        <div id="atsEvaluateResults" class="mt-24 printable-report">
+            <div class="empty-state">
+                <div class="icon">📋</div>
+                <h3>Select a resume and provide a JD</h3>
+                <p>The system will score the resume on Keywords, Formatting, Experience, and Structure using rule-based logic.</p>
+            </div>
+        </div>
+    </section>
+
 </div>
 
+<!-- Print Styles -->
+<style>
+@media print {
+    body * { visibility: hidden; }
+    .printable-report, .printable-report * { visibility: visible; }
+    .printable-report { position: absolute; left: 0; top: 0; width: 100%; color: #000; background: #fff !important; }
+    .glass-card { background: #fff !important; color: #000 !important; box-shadow: none !important; border: 1px solid #ccc; }
+    .score-bar-fill { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .skill-tag { background: #eee !important; color: #000 !important; border: 1px solid #aaa; -webkit-print-color-adjust: exact; }
+}
+</style>
 <script src="/static/js/app.js"></script>
 </body>
 </html>

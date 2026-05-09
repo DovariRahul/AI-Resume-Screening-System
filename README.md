@@ -11,6 +11,7 @@ An AI-powered recruitment assistant that automates candidate screening using NLP
 - **📊 Multi-Score Ranking** — Semantic + TF-IDF + Skill Match composite score
 - **⚡ FAISS Vector Search** — Scalable semantic search across thousands of resumes
 - **🤖 AI Content Detection** — Estimate AI-generated content in resumes using Google Gemini
+- **📊 ATS Evaluator** — Comprehensive resume scoring against JD across 4 critical criteria using Gemini
 - **🌐 Premium Web UI** — Glassmorphism dark theme with animations
 
 ## Tech Stack
@@ -66,7 +67,8 @@ Open http://localhost:5000 in your browser.
 | `/api/upload_multiple` | POST | Upload multiple resumes |
 | `/api/match` | POST | Match resumes against JD |
 | `/api/semantic_search` | POST | Semantic search across resumes |
-| `/api/detect_ai` | POST | Detect AI-generated content in a resume |
+| `/api/detect_ai/<id>` | POST | Detect AI-generated content in a resume |
+| `/api/evaluate_ats/<id>` | POST | Get ATS evaluation for a resume against a JD |
 | `/api/clear` | POST | Clear all data |
 | `/api/stats` | GET | System statistics |
 
@@ -82,7 +84,8 @@ AI-Resume-Screener/
 │   ├── skill_extractor.py # Skill identification
 │   ├── matcher.py         # Embedding & similarity
 │   ├── vector_store.py    # FAISS vector database
-│   └── ai_detector.py     # Gemini AI content detection
+│   ├── ai_detector.py     # Gemini AI content detection
+│   └── ats_evaluator.py   # Gemini ATS Resume Evaluator
 ├── templates/
 │   └── index.html         # Web UI
 ├── static/

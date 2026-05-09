@@ -354,12 +354,98 @@ function renderMatchResults(data) {
                     ${sc.extra.length > 10 ? `<span class="skill-tag extra">+${sc.extra.length - 10} more</span>` : ''}</div>
                 ` : ''}
             </div>
+            <div style="margin-top:16px; border-top:1px solid rgba(255,255,255,0.1); padding-top:16px;">
+                <button class="btn btn-primary" onclick="evaluateAts('${c.id}')" id="btn-ats-${c.id}" style="width:100%; padding:10px;">📊 Calculate Deterministic ATS Score</button>
+                <div id="ats-result-${c.id}" style="margin-top:16px;"></div>
+            </div>
         </div>`;
     });
 
     html += '</div>';
     matchResults.innerHTML = html;
 }
+
+// ── ATS Evaluator ──
+window.evaluateAts = async function(candidateId) {
+    const jd = jdInput.value.trim();
+    if (!jd) {
+        showToast('Job description is missing', 'error');
+        return;
+    }
+
+    const btn = document.getElementById(`btn-ats-${candidateId}`);
+    const resultDiv = document.getElementById(`ats-result-${candidateId}`);
+    
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '⏳ Evaluating...';
+    }
+
+    try {
+        const res = await fetch(`/api/evaluate_ats/${candidateId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ job_description: jd })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            const ev = data.evaluation;
+            const scoreColor = ev.total_ats_score >= 80 ? '#10b981' : ev.total_ats_score >= 60 ? '#f59e0b' : '#ef4444';
+            
+            let html = `
+                <div class="glass-card" style="background:rgba(0,0,0,0.2); padding:16px; margin:0;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                        <h3 style="margin:0; font-size:1.1rem; color:#fff;">Deterministic ATS Score</h3>
+                        <div style="font-size:1.5rem; font-weight:700; color:${scoreColor}">${ev.total_ats_score}/100</div>
+                    </div>
+                    
+                    <div class="score-bars" style="margin-bottom:16px;">
+                        <div class="score-bar-item">
+                            <div class="score-bar-label"><span>Keywords (25)</span><span>${ev.breakdown.keyword_presence}</span></div>
+                            <div class="score-bar"><div class="score-bar-fill" style="width:${(ev.breakdown.keyword_presence/25)*100}%; background:#3b82f6;"></div></div>
+                        </div>
+                        <div class="score-bar-item">
+                            <div class="score-bar-label"><span>Formatting (25)</span><span>${ev.breakdown.formatting}</span></div>
+                            <div class="score-bar"><div class="score-bar-fill" style="width:${(ev.breakdown.formatting/25)*100}%; background:#8b5cf6;"></div></div>
+                        </div>
+                        <div class="score-bar-item">
+                            <div class="score-bar-label"><span>Experience (25)</span><span>${ev.breakdown.experience}</span></div>
+                            <div class="score-bar"><div class="score-bar-fill" style="width:${(ev.breakdown.experience/25)*100}%; background:#10b981;"></div></div>
+                        </div>
+                        <div class="score-bar-item">
+                            <div class="score-bar-label"><span>Project Relevance (25)</span><span>${ev.breakdown.project_relevance}</span></div>
+                            <div class="score-bar"><div class="score-bar-fill" style="width:${(ev.breakdown.project_relevance/25)*100}%; background:#f59e0b;"></div></div>
+                        </div>
+                    </div>
+                    
+                    ${ev.suggestions && ev.suggestions.length > 0 ? `
+                        <div style="font-size:0.9rem; color:#cbd5e1; background:rgba(255,255,255,0.05); padding:12px; border-radius:8px; border-left:3px solid #3b82f6;">
+                            <strong>Suggestions:</strong><br>
+                            ${ev.suggestions.join('<br>')}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            resultDiv.innerHTML = html;
+            if (btn) btn.style.display = 'none';
+        } else {
+            resultDiv.innerHTML = `<div style="color:#ef4444; padding:10px;">Error: ${data.error}</div>`;
+            showToast(data.error || 'Evaluation failed', 'error');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '📊 Calculate Deterministic ATS Score';
+            }
+        }
+    } catch (err) {
+        resultDiv.innerHTML = `<div style="color:#ef4444; padding:10px;">Network Error: ${err.message}</div>`;
+        showToast('Network error: ' + err.message, 'error');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '📊 Calculate Deterministic ATS Score';
+        }
+    }
+};
 
 // ── Semantic Search ──
 searchBtn.addEventListener('click', performSearch);
@@ -469,17 +555,49 @@ const aiCandidateSelect = document.getElementById('aiCandidateSelect');
 const aiDetectBtn = document.getElementById('aiDetectBtn');
 const aiDetectResults = document.getElementById('aiDetectResults');
 
+// ── ATS Score Evaluator Tab ──
+const atsCandidateSelect = document.getElementById('atsCandidateSelect');
+const atsJdInput = document.getElementById('atsJdInput');
+const atsEvaluateBtn = document.getElementById('atsEvaluateBtn');
+const atsEvaluateResults = document.getElementById('atsEvaluateResults');
+
+function updateAtsTabButton() {
+    if (atsEvaluateBtn) {
+        atsEvaluateBtn.disabled = !atsCandidateSelect.value || !atsJdInput.value || atsJdInput.value.trim().length < 20;
+    }
+}
+
 function populateAiSelect() {
     const current = aiCandidateSelect.value;
     aiCandidateSelect.innerHTML = '<option value="">— Select a candidate to analyze —</option>';
+    
+    let atsCurrent = null;
+    if (atsCandidateSelect) {
+        atsCurrent = atsCandidateSelect.value;
+        atsCandidateSelect.innerHTML = '<option value="">— Select a candidate to analyze —</option>';
+    }
+
     processedCandidates.forEach(c => {
         const opt = document.createElement('option');
         opt.value = c.id;
         opt.textContent = `${c.filename} (${c.id})`;
         aiCandidateSelect.appendChild(opt);
+        
+        if (atsCandidateSelect) {
+            const opt2 = document.createElement('option');
+            opt2.value = c.id;
+            opt2.textContent = `${c.filename} (${c.id})`;
+            atsCandidateSelect.appendChild(opt2);
+        }
     });
+    
     if (current) aiCandidateSelect.value = current;
     aiDetectBtn.disabled = !aiCandidateSelect.value;
+    
+    if (atsCandidateSelect && atsCurrent) {
+        atsCandidateSelect.value = atsCurrent;
+    }
+    updateAtsTabButton();
 }
 
 aiCandidateSelect.addEventListener('change', () => {
@@ -617,3 +735,110 @@ jdInput.addEventListener('input', updateMatchButton);
         // Server not reachable – first load is fine
     }
 })();
+
+// ── ATS Score Evaluator Tab Logic ──
+if (atsCandidateSelect && atsJdInput && atsEvaluateBtn) {
+    atsCandidateSelect.addEventListener('change', updateAtsTabButton);
+    atsJdInput.addEventListener('input', updateAtsTabButton);
+
+    atsEvaluateBtn.addEventListener('click', async () => {
+        const cid = atsCandidateSelect.value;
+        const jd = atsJdInput.value.trim();
+        if (!cid || !jd) return;
+
+        showLoading('Calculating deterministic ATS score...');
+
+        try {
+            const res = await fetch(`/api/evaluate_ats/${cid}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ job_description: jd })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                renderAtsTabResults(data);
+                showToast('ATS evaluation complete', 'success');
+            } else {
+                showToast(data.error || 'Evaluation failed', 'error');
+            }
+        } catch (err) {
+            showToast('Error: ' + err.message, 'error');
+        }
+        hideLoading();
+    });
+}
+
+function renderAtsTabResults(data) {
+    const ev = data.evaluation;
+    const scoreColor = ev.total_ats_score >= 80 ? '#10b981' : ev.total_ats_score >= 60 ? '#f59e0b' : '#ef4444';
+    
+    let html = `
+        <div class="glass-card ai-result-card">
+            <div class="ai-result-header">
+                <div>
+                    <h3>📄 ${data.filename}</h3>
+                </div>
+                <div class="ai-score-gauge">
+                    <svg viewBox="0 0 120 120" width="120" height="120">
+                        <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="10"/>
+                        <circle cx="60" cy="60" r="50" fill="none" stroke="${scoreColor}" stroke-width="10"
+                            stroke-linecap="round" stroke-dasharray="${Math.PI * 100}"
+                            stroke-dashoffset="${Math.PI * 100 - (ev.total_ats_score / 100) * Math.PI * 100}"
+                            transform="rotate(-90 60 60)" style="transition:stroke-dashoffset 1.2s ease"/>
+                    </svg>
+                    <div class="ai-score-text" style="color:${scoreColor}">
+                        <span class="ai-score-num">${ev.total_ats_score}%</span>
+                        <span class="ai-score-label">ATS Score</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="score-bars" style="margin-top:24px; margin-bottom:24px;">
+                <div class="score-bar-item">
+                    <div class="score-bar-label"><span>Keywords (25)</span><span>${ev.breakdown.keyword_presence}</span></div>
+                    <div class="score-bar"><div class="score-bar-fill" style="width:${(ev.breakdown.keyword_presence/25)*100}%; background:#3b82f6;"></div></div>
+                </div>
+                <div class="score-bar-item">
+                    <div class="score-bar-label"><span>Formatting (25)</span><span>${ev.breakdown.formatting}</span></div>
+                    <div class="score-bar"><div class="score-bar-fill" style="width:${(ev.breakdown.formatting/25)*100}%; background:#8b5cf6;"></div></div>
+                </div>
+                <div class="score-bar-item">
+                    <div class="score-bar-label"><span>Experience & Structure (25)</span><span>${ev.breakdown.experience}</span></div>
+                    <div class="score-bar"><div class="score-bar-fill" style="width:${(ev.breakdown.experience/25)*100}%; background:#10b981;"></div></div>
+                </div>
+                <div class="score-bar-item">
+                    <div class="score-bar-label"><span>Project Relevance (25)</span><span>${ev.breakdown.project_relevance}</span></div>
+                    <div class="score-bar"><div class="score-bar-fill" style="width:${(ev.breakdown.project_relevance/25)*100}%; background:#f59e0b;"></div></div>
+                </div>
+            </div>
+            
+            <div class="grid-2" style="margin-top:24px;">
+                <div>
+                    <div class="skills-label">✅ Matched Keywords (${ev.matched_keywords ? ev.matched_keywords.length : 0})</div>
+                    <div class="skills-row">${(ev.matched_keywords || []).map(s => `<span class="skill-tag matched">✔ ${s}</span>`).join('')}</div>
+                </div>
+                <div>
+                    <div class="skills-label">❌ Missing Keywords (${ev.missing_keywords ? ev.missing_keywords.length : 0})</div>
+                    <div class="skills-row">${(ev.missing_keywords || []).map(s => `<span class="skill-tag missing">✘ ${s}</span>`).join('')}</div>
+                </div>
+            </div>
+            
+            ${ev.suggestions && ev.suggestions.length > 0 ? `
+                <div style="font-size:1rem; color:#cbd5e1; background:rgba(255,255,255,0.05); padding:16px; border-radius:8px; border-left:4px solid #3b82f6; margin-top:24px;">
+                    <strong style="display:block; margin-bottom:8px;">Suggestions:</strong>
+                    <ul style="margin:0; padding-left:20px; line-height:1.5;">
+                        ${ev.suggestions.map(s => `<li>${s}</li>`).join('')}
+                    </ul>
+                </div>
+            ` : ''}
+        </div>`;
+        
+    atsEvaluateResults.innerHTML = html;
+    
+    const downloadBtn = document.getElementById('atsDownloadBtn');
+    if (downloadBtn) {
+        downloadBtn.style.display = 'block';
+    }
+}
+

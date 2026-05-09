@@ -26,6 +26,7 @@ from utils.matcher import (
 )
 from utils.vector_store import add_resume, search_similar, clear_index, get_total_resumes, remove_resume
 from utils.ai_detector import detect_ai_content
+from utils.ats_evaluator import evaluate_ats_score
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 CORS(app)
@@ -311,6 +312,35 @@ def detect_ai(candidate_id):
             "candidate_id": candidate_id,
             "filename": all_candidates[candidate_id]["info"]["filename"],
             "detection": result,
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/evaluate_ats/<candidate_id>', methods=['POST'])
+def evaluate_ats(candidate_id):
+    """Run ATS evaluation on a candidate's resume against a JD."""
+    data = request.get_json()
+    if not data or 'job_description' not in data:
+        return jsonify({"error": "Job description is required"}), 400
+
+    jd_text = data['job_description']
+    all_candidates = _load_candidates()
+
+    if candidate_id not in all_candidates:
+        return jsonify({"error": "Candidate not found."}), 404
+
+    raw_text = all_candidates[candidate_id].get("raw_text", "")
+    if not raw_text.strip():
+        return jsonify({"error": "No resume text available."}), 400
+
+    try:
+        result = evaluate_ats_score(raw_text, jd_text)
+        return jsonify({
+            "success": True,
+            "candidate_id": candidate_id,
+            "filename": all_candidates[candidate_id]["info"]["filename"],
+            "evaluation": result,
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
