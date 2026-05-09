@@ -1,0 +1,19 @@
+# Environment variables
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Uploaded resumes (user data)
+resumes/
+
+# Persistent data
+data/
+vector_store/*.bin
+vector_store/*.json
+
+# IDE
+.vscode/
+.idea/

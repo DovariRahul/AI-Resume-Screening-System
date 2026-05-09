@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AI-powered Resume Screening System that matches candidates to job descriptions using NLP, embeddings, and semantic search.">
+    <title>AI Resume Screener — Intelligent Candidate Matching</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<!-- Animated Background -->
+<div class="bg-animation">
+    <div class="bg-orb"></div>
+    <div class="bg-orb"></div>
+    <div class="bg-orb"></div>
+</div>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loader"></div>
+    <div class="loading-text" id="loadingText">Processing resumes...</div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="app-container">
+
+    <!-- Header -->
+    <header class="app-header">
+        <div class="logo">
+            <div class="logo-icon">🧠</div>
+            <div>
+                <h1>AI Resume Screener</h1>
+                <span>Powered by NLP &amp; Semantic Search</span>
+            </div>
+        </div>
+        <div class="header-stats">
+            <div class="stat-badge">
+                📄 Resumes: <span class="num" id="resumeCount">0</span>
+            </div>
+            <div class="stat-badge">
+                🔍 FAISS Index: <span class="num" id="indexStatus">Ready</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Tab Navigation -->
+    <nav class="tab-nav" id="tabNav">
+        <button class="tab-btn active" data-tab="upload" id="tabUpload">📤 Upload Resumes</button>
+        <button class="tab-btn" data-tab="match" id="tabMatch">🎯 Match &amp; Rank</button>
+        <button class="tab-btn" data-tab="search" id="tabSearch">🔎 Semantic Search</button>
+        <button class="tab-btn" data-tab="aidetect" id="tabAiDetect">🤖 AI Detect</button>
+    </nav>
+
+    <!-- ══════════════════════════════════════
+         TAB 1: Upload Resumes
+    ══════════════════════════════════════ -->
+    <section class="tab-content active" id="tab-upload">
+        <div class="grid-2">
+            <!-- Upload Card -->
+            <div class="glass-card">
+                <div class="card-header">
+                    <div class="icon">📄</div>
+                    <div>
+                        <h2>Upload Resumes</h2>
+                        <p>PDF or DOCX files — drag &amp; drop or click</p>
+                    </div>
+                </div>
+
+                <div class="upload-zone" id="uploadZone">
+                    <input type="file" id="fileInput" multiple accept=".pdf,.docx,.doc">
+                    <div class="upload-icon">📁</div>
+                    <h3>Drop resumes here</h3>
+                    <p>Supports PDF &amp; DOCX • Max 16 MB each</p>
+                </div>
+
+                <div class="file-list" id="fileList"></div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" id="uploadBtn" disabled>
+                        🚀 Process Resumes
+                    </button>
+                    <button class="btn btn-danger" id="clearBtn">
+                        🗑️ Clear All
+                    </button>
+                </div>
+            </div>
+
+            <!-- Uploaded Candidates -->
+            <div class="glass-card">
+                <div class="card-header">
+                    <div class="icon">👥</div>
+                    <div>
+                        <h2>Processed Candidates</h2>
+                        <p>Skills extracted via NLP pipeline</p>
+                    </div>
+                </div>
+                <div id="candidatesList">
+                    <div class="empty-state">
+                        <div class="icon">📋</div>
+                        <h3>No resumes processed yet</h3>
+                        <p>Upload resumes to see extracted skills</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ══════════════════════════════════════
+         TAB 2: Match & Rank
+    ══════════════════════════════════════ -->
+    <section class="tab-content" id="tab-match">
+        <div class="glass-card">
+            <div class="card-header">
+                <div class="icon">📝</div>
+                <div>
+                    <h2>Job Description</h2>
+                    <p>Paste the job requirements to match against resumes</p>
+                </div>
+            </div>
+
+            <textarea class="jd-textarea" id="jdInput" placeholder="Paste job description here...
+
+Example:
+We are looking for a Python Developer with experience in Machine Learning, SQL, NLP, Flask, and cloud technologies like AWS. The ideal candidate should have experience with TensorFlow or PyTorch, data analysis using Pandas, and building REST APIs. Knowledge of Docker and Git is a plus."></textarea>
+
+            <div class="btn-group">
+                <button class="btn btn-primary" id="matchBtn" disabled>
+                    🎯 Analyze &amp; Rank Candidates
+                </button>
+            </div>
+
+            <div id="jdSkillsPreview"></div>
+        </div>
+
+        <!-- Results -->
+        <div id="matchResults" class="mt-24">
+            <div class="empty-state">
+                <div class="icon">📊</div>
+                <h3>No results yet</h3>
+                <p>Upload resumes and enter a job description to see rankings</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ══════════════════════════════════════
+         TAB 3: Semantic Search
+    ══════════════════════════════════════ -->
+    <section class="tab-content" id="tab-search">
+        <div class="glass-card">
+            <div class="card-header">
+                <div class="icon">🧠</div>
+                <div>
+                    <h2>Semantic Search</h2>
+                    <p>Search resumes by meaning — not just keywords</p>
+                </div>
+            </div>
+
+            <div class="search-bar">
+                <input type="text" class="search-input" id="searchInput"
+                       placeholder="e.g. experienced in deep learning and computer vision">
+                <button class="btn btn-primary" id="searchBtn">🔍 Search</button>
+            </div>
+        </div>
+
+        <div id="searchResults" class="mt-24">
+            <div class="empty-state">
+                <div class="icon">🔎</div>
+                <h3>Enter a search query</h3>
+                <p>AI will find semantically similar resumes using FAISS</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ══════════════════════════════════════
+         TAB 4: AI Content Detection
+    ══════════════════════════════════════ -->
+    <section class="tab-content" id="tab-aidetect">
+        <div class="glass-card">
+            <div class="card-header">
+                <div class="icon">🤖</div>
+                <div>
+                    <h2>AI Content Detector</h2>
+                    <p>Powered by Gemini — detect AI-generated resume content</p>
+                </div>
+            </div>
+
+            <div class="ai-detect-controls">
+                <select class="ai-select" id="aiCandidateSelect">
+                    <option value="">— Select a candidate to analyze —</option>
+                </select>
+                <button class="btn btn-primary" id="aiDetectBtn" disabled>
+                    🤖 Analyze for AI Content
+                </button>
+            </div>
+        </div>
+
+        <div id="aiDetectResults" class="mt-24">
+            <div class="empty-state">
+                <div class="icon">🔬</div>
+                <h3>Select a resume to analyze</h3>
+                <p>Gemini AI will scan for AI-generated patterns, generic phrases, and authenticity markers</p>
+            </div>
+        </div>
+    </section>
+
+</div>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>
